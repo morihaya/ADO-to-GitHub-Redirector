@@ -100,15 +100,15 @@ document.addEventListener('DOMContentLoaded', async function() {
           const prTitle = await getPRTitle(urlAdoOrg, projectName, repoName, prId);
           if (prTitle) {
             const encodedTitle = encodeURIComponent(prTitle);
-            return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Apr+${encodedTitle}`;
+            return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr+${encodedTitle}`;
           }
         } catch (error) {
           console.log('Could not fetch PR title, using pulls list instead');
         }
       }
       
-      // Fallback to pulls list
-      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls`;
+      // Fallback to closed pulls list
+      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr`;
     }
     
     // For other URLs, redirect to the repository

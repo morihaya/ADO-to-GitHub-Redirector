@@ -16,8 +16,8 @@
     
     // Check if it's a pull request URL
     if (adoUrl.includes('/pullrequest/')) {
-      // Redirect to GitHub pulls list
-      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls`;
+      // Redirect to GitHub closed pulls list
+      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr`;
     }
     
     // For other URLs, redirect to the repository
