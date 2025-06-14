@@ -20,6 +20,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     currentUrlDiv.style.display = 'block';
     urlDisplay.textContent = currentUrl;
     redirectBtn.style.display = 'inline-block';
+    
+    // Auto-redirect if settings are already configured
+    if (result.adoOrg && result.githubOrg) {
+      const githubUrl = await convertToGitHubUrl(currentUrl, result.adoOrg, result.githubOrg);
+      if (githubUrl) {
+        // Show a countdown before auto-redirect
+        showAutoRedirectCountdown(githubUrl, tab.id);
+      }
+    }
   }
 
   // Save settings
@@ -115,5 +124,86 @@ document.addEventListener('DOMContentLoaded', async function() {
       console.error('Error fetching PR title:', error);
       return null;
     }
+  }
+
+  function showAutoRedirectCountdown(githubUrl, tabId) {
+    // Create countdown overlay
+    const overlay = document.createElement('div');
+    overlay.innerHTML = `
+      <div style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 123, 204, 0.95);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+      ">
+        <div style="text-align: center;">
+          <h3 style="margin: 0 0 20px 0;">🚀 Auto-Redirecting to GitHub</h3>
+          <div style="font-size: 48px; font-weight: bold; margin: 20px 0;" id="countdown">3</div>
+          <div style="margin: 10px 0;">
+            <button id="redirectNow" style="
+              background: #28a745;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              margin: 0 5px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 14px;
+            ">Redirect Now</button>
+            <button id="cancelRedirect" style="
+              background: #dc3545;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              margin: 0 5px;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 14px;
+            ">Cancel</button>
+          </div>
+          <div style="font-size: 12px; opacity: 0.8; max-width: 300px; word-break: break-all;">
+            Target: ${githubUrl}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    let countdown = 3;
+    const countdownElement = document.getElementById('countdown');
+    
+    const timer = setInterval(() => {
+      countdown--;
+      countdownElement.textContent = countdown;
+      
+      if (countdown <= 0) {
+        clearInterval(timer);
+        chrome.tabs.update(tabId, { url: githubUrl });
+        window.close();
+      }
+    }, 1000);
+
+    // Redirect now button
+    document.getElementById('redirectNow').addEventListener('click', () => {
+      clearInterval(timer);
+      chrome.tabs.update(tabId, { url: githubUrl });
+      window.close();
+    });
+
+    // Cancel button
+    document.getElementById('cancelRedirect').addEventListener('click', () => {
+      clearInterval(timer);
+      overlay.remove();
+    });
   }
 });
