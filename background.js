@@ -1,72 +1,98 @@
 // Background script for handling badge and URL redirection
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  if (request.action === 'showBadge') {
-    // Show prominent badge when on ADO URL
+console.log('Background script loaded and ready');
+
+// Simplified approach - only use tabs.onUpdated for better Edge compatibility
+// Remove message listener to avoid Service Worker issues
+
+// Listen for tab updates (similar to Azure Quick Jump pattern)
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+  console.log('Tab updated:', tabId, 'Status:', changeInfo.status, 'URL:', tab.url);
+  
+  if (tab.url && isADOUrl(tab.url)) {
+    console.log('Setting ADO badge for tab:', tabId);
     try {
-      await chrome.action.setBadgeText({
-        text: 'ADO',
-        tabId: sender.tab.id
-      });
-      
-      await chrome.action.setBadgeBackgroundColor({
-        color: '#ff3333', // Bright red background
-        tabId: sender.tab.id
-      });
-      
-      await chrome.action.setTitle({
+      chrome.action.setBadgeText({ text: "ADO", tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: '#ff3333', tabId: tabId });
+      chrome.action.setTitle({ 
         title: '🚀 Click to redirect to GitHub - ADO URL detected!',
-        tabId: sender.tab.id
+        tabId: tabId 
       });
+      console.log('Badge set successfully for tab:', tabId);
     } catch (error) {
-      console.error('Error setting badge from content script:', error);
+      console.error('Error setting badge for tab:', tabId, error);
+    }
+  } else {
+    console.log('Clearing badge for tab:', tabId);
+    try {
+      chrome.action.setBadgeText({ text: "", tabId: tabId });
+      chrome.action.setTitle({ 
+        title: 'ADO to GitHub Redirector',
+        tabId: tabId 
+      });
+      console.log('Badge cleared for tab:', tabId);
+    } catch (error) {
+      console.error('Error clearing badge for tab:', tabId, error);
     }
   }
 });
 
-// Clear badge when navigating away from ADO URLs and show badge when on ADO URLs
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
-    if (isADOUrl(tab.url)) {
-      // Show prominent badge when on ADO URL
-      try {
-        await chrome.action.setBadgeText({
-          text: 'ADO',
-          tabId: tabId
-        });
-        
-        await chrome.action.setBadgeBackgroundColor({
-          color: '#ff3333', // Bright red background
-          tabId: tabId
-        });
-        
-        await chrome.action.setTitle({
-          title: '🚀 Click to redirect to GitHub - ADO URL detected!',
-          tabId: tabId
-        });
-      } catch (error) {
-        console.error('Error setting active badge:', error);
-      }
-    } else {
-      // Clear badge when not on ADO URL
-      try {
-        await chrome.action.setBadgeText({
-          text: '',
-          tabId: tabId
-        });
-        
-        await chrome.action.setTitle({
-          title: 'ADO to GitHub Redirector',
-          tabId: tabId
-        });
-      } catch (error) {
-        console.error('Error clearing badge:', error);
+// Listen for tab activation (similar to Azure Quick Jump pattern)
+chrome.tabs.onActivated.addListener(function (activeInfo) {
+  console.log('Tab activated:', activeInfo.tabId);
+  
+  chrome.tabs.query({ "active": true }, function (tabs) {
+    if (tabs[0] && tabs[0].url) {
+      console.log('Active tab URL:', tabs[0].url);
+      
+      if (isADOUrl(tabs[0].url)) {
+        console.log('Setting ADO badge for active tab:', activeInfo.tabId);
+        try {
+          chrome.action.setBadgeText({ text: "ADO", tabId: activeInfo.tabId });
+          chrome.action.setBadgeBackgroundColor({ color: '#ff3333', tabId: activeInfo.tabId });
+          chrome.action.setTitle({ 
+            title: '🚀 Click to redirect to GitHub - ADO URL detected!',
+            tabId: activeInfo.tabId 
+          });
+        } catch (error) {
+          console.error('Error setting badge for active tab:', activeInfo.tabId, error);
+        }
+      } else {
+        console.log('Clearing badge for active tab:', activeInfo.tabId);
+        try {
+          chrome.action.setBadgeText({ text: "", tabId: activeInfo.tabId });
+          chrome.action.setTitle({ 
+            title: 'ADO to GitHub Redirector',
+            tabId: activeInfo.tabId 
+          });
+        } catch (error) {
+          console.error('Error clearing badge for active tab:', activeInfo.tabId, error);
+        }
       }
     }
-  }
+  });
 });
 
 // Note: chrome.action.onClicked is not used when default_popup is set in manifest
 // The popup will handle both settings and redirection logic
+
+// Extension startup handler
+chrome.runtime.onInstalled.addListener(function () {
+  console.log('Extension installed/reloaded');
+  
+  // Check current active tab immediately
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    if (tabs[0] && tabs[0].url && isADOUrl(tabs[0].url)) {
+      console.log('Extension startup - ADO URL detected:', tabs[0].url);
+      try {
+        chrome.action.setBadgeText({ text: "ADO", tabId: tabs[0].id });
+        chrome.action.setBadgeBackgroundColor({ color: '#ff3333', tabId: tabs[0].id });
+        console.log('Startup badge set for tab:', tabs[0].id);
+      } catch (error) {
+        console.error('Error setting startup badge:', error);
+      }
+    }
+  });
+});
 
 function isADOUrl(url) {
   return url && url.includes('dev.azure.com') && url.includes('/_git/');

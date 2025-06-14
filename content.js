@@ -26,13 +26,11 @@
 
   function checkCurrentUrl() {
     const currentUrl = window.location.href;
+    console.log('Content script checking URL:', currentUrl);
+    console.log('Is ADO URL:', isADORepoUrl(currentUrl));
     
     if (isADORepoUrl(currentUrl)) {
-      // Send message to background script to show badge
-      chrome.runtime.sendMessage({
-        action: 'showBadge',
-        url: currentUrl
-      });
+      console.log('ADO URL detected - background script will handle badge via tabs.onUpdated');
       
       // Check if repository is disabled
       checkIfRepoDisabled();
@@ -180,6 +178,44 @@
       checkCurrentUrl();
     }
   }).observe(document, { subtree: true, childList: true });
+
+
+  function createVisualIndicator() {
+    // Create a small visual indicator on the page if badge fails
+    const indicator = document.createElement('div');
+    indicator.id = 'ado-github-indicator';
+    indicator.innerHTML = '🔗 ADO → GitHub';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #ff3333;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+    `;
+    
+    // Remove existing indicator
+    const existing = document.getElementById('ado-github-indicator');
+    if (existing) existing.remove();
+    
+    document.body.appendChild(indicator);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      if (document.getElementById('ado-github-indicator')) {
+        indicator.remove();
+      }
+    }, 5000);
+    
+    console.log('Visual indicator created as fallback');
+  }
 
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
