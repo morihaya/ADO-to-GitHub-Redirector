@@ -6,6 +6,24 @@
     return url.includes('dev.azure.com') && url.includes('/_git/');
   }
 
+  function convertToGitHubUrl(adoUrl, adoOrg, githubOrg) {
+    const urlPattern = /https:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_git\/([^\/]+)/;
+    const match = adoUrl.match(urlPattern);
+    
+    if (!match) return null;
+    
+    const [, urlAdoOrg, projectName, repoName] = match;
+    
+    // Check if it's a pull request URL
+    if (adoUrl.includes('/pullrequest/')) {
+      // Redirect to GitHub pulls list
+      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls`;
+    }
+    
+    // For other URLs, redirect to the repository
+    return `https://github.com/${githubOrg}/${projectName}-${repoName}`;
+  }
+
   function checkCurrentUrl() {
     const currentUrl = window.location.href;
     
@@ -41,7 +59,7 @@
     }
   }
 
-  function showRedirectSuggestion() {
+  async function showRedirectSuggestion() {
     // Create a notification banner suggesting to use the extension
     const banner = document.createElement('div');
     banner.id = 'ado-github-redirect-banner';
@@ -62,7 +80,18 @@
         border-bottom: 3px solid #005aa3;
       ">
         <strong>📍 Repository Moved to GitHub?</strong>
-        <span style="margin: 0 15px;">Click the ADO to GitHub Redirector extension icon to redirect to the corresponding GitHub repository.</span>
+        <span style="margin: 0 15px;">This repository appears to be disabled or moved.</span>
+        <button id="redirect-to-github" style="
+          background: #28a745;
+          border: 1px solid #1e7e34;
+          color: white;
+          padding: 6px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          margin: 0 8px;
+          font-weight: bold;
+        ">🔗 Redirect to GitHub</button>
         <button id="dismiss-banner" style="
           background: rgba(255,255,255,0.2);
           border: 1px solid rgba(255,255,255,0.3);
@@ -83,6 +112,29 @@
     }
     
     document.body.insertBefore(banner, document.body.firstChild);
+    
+    // Add redirect functionality
+    document.getElementById('redirect-to-github').addEventListener('click', async function() {
+      try {
+        const settings = await chrome.storage.sync.get(['adoOrg', 'githubOrg']);
+        
+        if (!settings.adoOrg || !settings.githubOrg) {
+          // Show settings prompt
+          alert('Please configure your organization settings in the extension popup first.');
+          return;
+        }
+        
+        const githubUrl = convertToGitHubUrl(window.location.href, settings.adoOrg, settings.githubOrg);
+        if (githubUrl) {
+          window.location.href = githubUrl;
+        } else {
+          alert('Unable to convert this URL to GitHub format.');
+        }
+      } catch (error) {
+        console.error('Error redirecting to GitHub:', error);
+        alert('Error occurred while redirecting. Please try using the extension icon.');
+      }
+    });
     
     // Add dismiss functionality
     document.getElementById('dismiss-banner').addEventListener('click', function() {

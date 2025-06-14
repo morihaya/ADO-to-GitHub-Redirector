@@ -19,10 +19,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Clear badge when navigating away from ADO URLs
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+// Clear badge when navigating away from ADO URLs and show badge when on ADO URLs
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
-    if (!isADOUrl(tab.url)) {
+    if (isADOUrl(tab.url)) {
+      // Show badge when on ADO URL
+      chrome.action.setBadgeText({
+        text: '→',
+        tabId: tabId
+      });
+      
+      chrome.action.setBadgeBackgroundColor({
+        color: '#28a745',
+        tabId: tabId
+      });
+      
+      chrome.action.setTitle({
+        title: 'Click to redirect to GitHub',
+        tabId: tabId
+      });
+    } else {
+      // Clear badge when not on ADO URL
       chrome.action.setBadgeText({
         text: '',
         tabId: tabId
@@ -43,7 +60,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     
     if (!settings.adoOrg || !settings.githubOrg) {
       // Open popup if settings not configured
-      chrome.action.openPopup();
+      chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
       return;
     }
     
@@ -51,6 +68,9 @@ chrome.action.onClicked.addListener(async (tab) => {
     if (githubUrl) {
       chrome.tabs.update(tab.id, { url: githubUrl });
     }
+  } else {
+    // Show popup for settings when not on ADO URL
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
   }
 });
 
