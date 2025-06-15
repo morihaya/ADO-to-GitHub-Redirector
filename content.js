@@ -34,18 +34,18 @@
   }
 
   function checkIfRepoDisabled() {
-    // Look for common indicators that the repo is disabled
-    const indicators = [
+    // Look for specific disabled repository messages
+    const bodyText = document.body.textContent;
+    
+    // Check for specific Azure DevOps disabled repository messages
+    const disabledIndicators = [
+      'is disabled',
       'This repository has been disabled',
-      'Repository not found',
-      'Access denied',
-      'disabled',
-      'not available'
+      'contact your project administrator to re-enable it'
     ];
     
-    const bodyText = document.body.textContent.toLowerCase();
-    const isDisabled = indicators.some(indicator => 
-      bodyText.includes(indicator.toLowerCase())
+    const isDisabled = disabledIndicators.some(indicator => 
+      bodyText.includes(indicator)
     );
     
     if (isDisabled) {
@@ -211,10 +211,29 @@
     }, 5000);
   }
 
-  // Listen for messages from popup
+  function isRepoDisabled() {
+    // Look for specific disabled repository messages
+    const bodyText = document.body.textContent;
+    
+    // Check for specific Azure DevOps disabled repository messages
+    const disabledIndicators = [
+      'is disabled',
+      'This repository has been disabled',
+      'contact your project administrator to re-enable it'
+    ];
+    
+    return disabledIndicators.some(indicator => 
+      bodyText.includes(indicator)
+    );
+  }
+
+  // Listen for messages from popup and background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'getCurrentUrl') {
       sendResponse({ url: window.location.href });
+    } else if (request.action === 'checkRepoStatus') {
+      const isDisabled = isRepoDisabled();
+      sendResponse({ isDisabled: isDisabled });
     }
   });
 
