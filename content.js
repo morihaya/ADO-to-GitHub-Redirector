@@ -1,59 +1,28 @@
-// Content script to detect ADO URLs and communicate with background script
+// Content script: detects disabled ADO repositories, shows a redirect banner,
+// and answers status queries from the background script.
+// Shared helpers (isADORepoUrl, getSettings, convertToGitHubUrl) come from
+// shared.js, loaded before this file via the manifest.
 (function() {
   'use strict';
 
-  function isADORepoUrl(url) {
-    return url.includes('dev.azure.com') && url.includes('/_git/');
-  }
+  const DISABLED_INDICATORS = [
+    'is disabled',
+    'This repository has been disabled',
+    'contact your project administrator to re-enable it'
+  ];
 
-  function convertToGitHubUrl(adoUrl, adoOrg, githubOrg) {
-    const urlPattern = /https:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_git\/([^\/]+)/;
-    const match = adoUrl.match(urlPattern);
-    
-    if (!match) return null;
-    
-    const [, urlAdoOrg, projectName, repoName] = match;
-    
-    // Check if it's a pull request URL
-    if (adoUrl.includes('/pullrequest/')) {
-      // Redirect to GitHub closed pulls list
-      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr`;
-    }
-    
-    // For other URLs, redirect to the repository
-    return `https://github.com/${githubOrg}/${projectName}-${repoName}`;
+  function isRepoDisabled() {
+    const bodyText = document.body.textContent;
+    return DISABLED_INDICATORS.some((indicator) => bodyText.includes(indicator));
   }
 
   function checkCurrentUrl() {
-    const currentUrl = window.location.href;
-    
-    if (isADORepoUrl(currentUrl)) {
-      // Check if repository is disabled
-      checkIfRepoDisabled();
-    }
-  }
-
-  function checkIfRepoDisabled() {
-    // Look for specific disabled repository messages
-    const bodyText = document.body.textContent;
-    
-    // Check for specific Azure DevOps disabled repository messages
-    const disabledIndicators = [
-      'is disabled',
-      'This repository has been disabled',
-      'contact your project administrator to re-enable it'
-    ];
-    
-    const isDisabled = disabledIndicators.some(indicator => 
-      bodyText.includes(indicator)
-    );
-    
-    if (isDisabled) {
+    if (isADORepoUrl(window.location.href) && isRepoDisabled()) {
       showRedirectSuggestion();
     }
   }
 
-  async function showRedirectSuggestion() {
+  function showRedirectSuggestion() {
     // Create a notification banner suggesting to use the extension
     const banner = document.createElement('div');
     banner.id = 'ado-github-redirect-banner';
@@ -98,27 +67,25 @@
         ">✕ Dismiss</button>
       </div>
     `;
-    
+
     // Remove existing banner if present
     const existingBanner = document.getElementById('ado-github-redirect-banner');
     if (existingBanner) {
       existingBanner.remove();
     }
-    
+
     document.body.insertBefore(banner, document.body.firstChild);
-    
-    // Add redirect functionality
+
     document.getElementById('redirect-to-github').addEventListener('click', async function() {
       try {
-        const settings = await chrome.storage.sync.get(['adoOrg', 'githubOrg']);
-        
+        const settings = await getSettings();
+
         if (!settings.adoOrg || !settings.githubOrg) {
-          // Show settings prompt
           alert('Please configure your organization settings in the extension popup first.');
           return;
         }
-        
-        const githubUrl = convertToGitHubUrl(window.location.href, settings.adoOrg, settings.githubOrg);
+
+        const githubUrl = convertToGitHubUrl(window.location.href, settings);
         if (githubUrl) {
           window.location.href = githubUrl;
         } else {
@@ -129,22 +96,21 @@
         alert('Error occurred while redirecting. Please try using the extension icon.');
       }
     });
-    
-    // Add dismiss functionality
+
     document.getElementById('dismiss-banner').addEventListener('click', function() {
       banner.remove();
     });
-    
+
     // Auto-dismiss after 10 seconds
     setTimeout(() => {
       if (document.getElementById('ado-github-redirect-banner')) {
         banner.remove();
       }
     }, 10000);
-    
+
     // Adjust body padding to account for banner
     document.body.style.paddingTop = '60px';
-    
+
     // Remove padding when banner is removed
     const observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
@@ -158,7 +124,7 @@
         }
       });
     });
-    
+
     observer.observe(document.body, { childList: true });
   }
 
@@ -175,65 +141,12 @@
     }
   }).observe(document, { subtree: true, childList: true });
 
-
-  function createVisualIndicator() {
-    // Create a small visual indicator on the page if badge fails
-    const indicator = document.createElement('div');
-    indicator.id = 'ado-github-indicator';
-    indicator.innerHTML = '🔗 ADO → GitHub';
-    indicator.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: #ff3333;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: bold;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      cursor: pointer;
-    `;
-    
-    // Remove existing indicator
-    const existing = document.getElementById('ado-github-indicator');
-    if (existing) existing.remove();
-    
-    document.body.appendChild(indicator);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (document.getElementById('ado-github-indicator')) {
-        indicator.remove();
-      }
-    }, 5000);
-  }
-
-  function isRepoDisabled() {
-    // Look for specific disabled repository messages
-    const bodyText = document.body.textContent;
-    
-    // Check for specific Azure DevOps disabled repository messages
-    const disabledIndicators = [
-      'is disabled',
-      'This repository has been disabled',
-      'contact your project administrator to re-enable it'
-    ];
-    
-    return disabledIndicators.some(indicator => 
-      bodyText.includes(indicator)
-    );
-  }
-
   // Listen for messages from popup and background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'getCurrentUrl') {
       sendResponse({ url: window.location.href });
     } else if (request.action === 'checkRepoStatus') {
-      const isDisabled = isRepoDisabled();
-      sendResponse({ isDisabled: isDisabled });
+      sendResponse({ isDisabled: isRepoDisabled() });
     }
   });
 

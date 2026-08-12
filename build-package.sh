@@ -22,6 +22,7 @@ REQUIRED_FILES=(
     "popup.js"
     "content.js"
     "background.js"
+    "shared.js"
     "icon16.png"
     "icon32.png"
     "icon48.png"
