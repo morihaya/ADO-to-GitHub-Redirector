@@ -2,6 +2,10 @@
 
 A Chrome/Edge browser extension that helps users seamlessly redirect from disabled Azure DevOps Repositories to their corresponding GitHub repositories.
 
+<div align="center">
+  <img src="./store-assets/screenshots/screenshot1.png" alt="ADO to GitHub Redirector Extension - Banner Notification" width="800">
+</div>
+
 ## 🚀 Overview
 
 When organizations migrate from Azure DevOps Repos to GitHub, the old Azure DevOps URLs often become disabled or inaccessible, leaving users with no information about where the repositories have moved. This extension solves that problem by providing automatic redirection to the corresponding GitHub repositories.
