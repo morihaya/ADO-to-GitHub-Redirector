@@ -97,6 +97,61 @@ Developer email: your-email@example.com
 Keywords: azure devops, github, redirect, repository migration, productivity
 ```
 
+## Microsoft Partner Center での入力コメント案
+
+以下は、Microsoft Edge Add-ons の Partner Center で入力する項目にそのまま貼り付けられるコメント案です。
+
+### Single purpose description
+```text
+This extension redirects Azure DevOps repository URLs to the corresponding GitHub repositories when an organization migrates from Azure DevOps to GitHub. It helps users quickly access the correct repository without manually searching for the new location.
+```
+
+### Permission justification
+#### storage
+```text
+The extension stores the user's configured Azure DevOps organization name, GitHub organization name, and exclude keywords in the browser's local storage. This allows the redirect behavior to persist across visits without sending user data to a remote server.
+```
+
+#### activeTab
+```text
+The extension reads the current tab URL to detect whether the user is visiting an Azure DevOps repository page. This is necessary to determine whether a redirect should be triggered for that page.
+```
+
+#### tabs
+```text
+The extension may use tab information to monitor the active page and apply redirect logic when a relevant Azure DevOps URL is opened. This is required for the extension's redirect workflow and does not collect or transmit user browsing history.
+```
+
+#### contextMenus
+```text
+The extension adds a context menu action to provide a quick redirect option when the user is on a supported Azure DevOps URL. This is a minor UI convenience directly tied to the extension's single purpose.
+```
+
+### Host permission justification
+```text
+The extension needs access to https://dev.azure.com/* to detect Azure DevOps repository URLs and determine whether a redirect should be performed. It also needs access to https://github.com/* to support the redirect target and GitHub-related navigation flow. These permissions are only used for matching and redirecting migration-related pages and are not used to collect personal data.
+```
+
+### Are you using remote code?
+```text
+No. This extension does not use remote code, external script files, eval(), or dynamically loaded JavaScript from servers. All extension logic is bundled with the extension package and runs locally in the browser.
+```
+
+### Data usage
+```text
+This extension does not collect personal data, browsing history, or identifiable user information. It only stores local configuration values such as Azure DevOps organization name, GitHub organization name, and exclude keywords in the browser's local storage. No user data is transmitted to a remote service.
+```
+
+### Privacy policy URL
+```text
+https://github.com/morihaya/ADO-to-GitHub-Redirector
+```
+
+### Certification
+```text
+I certify that the above statements are true and accurate for this extension.
+```
+
 ## 注意事項
 
 1. 画像ファイルは PNG を使用する
@@ -104,3 +159,4 @@ Keywords: azure devops, github, redirect, repository migration, productivity
 3. 関連する UI のスクリーンショットを実際の動作に合わせて準備する
 4. 説明文には、対象ユーザーが「何を改善できるか」が伝わるように書く
 5. Chrome Web Store と Edge Add-ons は公開要件が少し異なるため、登録前に各ストアのガイドラインを確認する
+6. Microsoft Partner Center のフォームは、実際の公開要件と運用ポリシーに応じて文言を微調整する
