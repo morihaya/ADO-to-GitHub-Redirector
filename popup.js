@@ -1,6 +1,10 @@
+// Popup: settings management and manual/auto redirection.
+// Shared helpers (getSettings, isADORepoUrl, convertToGitHubUrl) come from
+// shared.js, loaded before this file in popup.html.
 document.addEventListener('DOMContentLoaded', async function() {
   const adoOrgInput = document.getElementById('adoOrg');
   const githubOrgInput = document.getElementById('githubOrg');
+  const excludeKeywordsInput = document.getElementById('excludeKeywords');
   const saveBtn = document.getElementById('saveBtn');
   const redirectBtn = document.getElementById('redirectBtn');
   const status = document.getElementById('status');
@@ -8,53 +12,52 @@ document.addEventListener('DOMContentLoaded', async function() {
   const urlDisplay = document.getElementById('urlDisplay');
 
   // Load saved settings
-  const result = await chrome.storage.sync.get(['adoOrg', 'githubOrg']);
-  if (result.adoOrg) adoOrgInput.value = result.adoOrg;
-  if (result.githubOrg) githubOrgInput.value = result.githubOrg;
+  const settings = await getSettings();
+  adoOrgInput.value = settings.adoOrg;
+  githubOrgInput.value = settings.githubOrg;
+  excludeKeywordsInput.value = settings.excludeKeywords;
 
   // Get current tab URL
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentUrl = tab.url;
-  
-  if (isADOUrl(currentUrl)) {
+
+  if (isADORepoUrl(currentUrl)) {
     currentUrlDiv.style.display = 'block';
     urlDisplay.textContent = currentUrl;
     redirectBtn.style.display = 'inline-block';
-    
+
     // Auto-redirect if settings are already configured
-    if (result.adoOrg && result.githubOrg) {
-      const githubUrl = await convertToGitHubUrl(currentUrl, result.adoOrg, result.githubOrg);
+    if (settings.adoOrg && settings.githubOrg) {
+      const githubUrl = convertToGitHubUrl(currentUrl, settings);
       if (githubUrl) {
-        // Show a countdown before auto-redirect
         showAutoRedirectCountdown(githubUrl, tab.id);
       }
     }
   }
 
-  // Save settings
   saveBtn.addEventListener('click', async function() {
     const adoOrg = adoOrgInput.value.trim();
     const githubOrg = githubOrgInput.value.trim();
-    
+    const excludeKeywords = excludeKeywordsInput.value.trim();
+
     if (!adoOrg || !githubOrg) {
       showStatus('Please fill in both organization names.', 'error');
       return;
     }
-    
-    await chrome.storage.sync.set({ adoOrg, githubOrg });
+
+    await chrome.storage.sync.set({ adoOrg, githubOrg, excludeKeywords });
     showStatus('Settings saved successfully!', 'success');
   });
 
-  // Redirect to GitHub
   redirectBtn.addEventListener('click', async function() {
-    const settings = await chrome.storage.sync.get(['adoOrg', 'githubOrg']);
-    
+    const settings = await getSettings();
+
     if (!settings.adoOrg || !settings.githubOrg) {
       showStatus('Please configure organization settings first.', 'error');
       return;
     }
-    
-    const githubUrl = await convertToGitHubUrl(currentUrl, settings.adoOrg, settings.githubOrg);
+
+    const githubUrl = convertToGitHubUrl(currentUrl, settings);
     if (githubUrl) {
       chrome.tabs.update(tab.id, { url: githubUrl });
       window.close();
@@ -70,59 +73,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(() => {
       status.style.display = 'none';
     }, 3000);
-  }
-
-  function isADOUrl(url) {
-    return url && url.includes('dev.azure.com') && url.includes('/_git/');
-  }
-
-  async function convertToGitHubUrl(adoUrl, adoOrg, githubOrg) {
-    const urlPattern = /https:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_git\/([^\/]+)/;
-    const match = adoUrl.match(urlPattern);
-    
-    if (!match) return null;
-    
-    const [, urlAdoOrg, projectName, repoName] = match;
-    
-    // Check if the ADO org matches the configured one
-    if (urlAdoOrg !== adoOrg) {
-      // Note: URL ADO org doesn't match configured org
-    }
-    
-    // Check if it's a pull request URL
-    if (adoUrl.includes('/pullrequest/')) {
-      const prMatch = adoUrl.match(/\/pullrequest\/(\d+)/);
-      if (prMatch) {
-        const prId = prMatch[1];
-        
-        // Try to get PR title from ADO API for better GitHub search
-        try {
-          const prTitle = await getPRTitle(urlAdoOrg, projectName, repoName, prId);
-          if (prTitle) {
-            const encodedTitle = encodeURIComponent(prTitle);
-            return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr+${encodedTitle}`;
-          }
-        } catch (error) {
-          // Could not fetch PR title, using pulls list instead
-        }
-      }
-      
-      // Fallback to closed pulls list
-      return `https://github.com/${githubOrg}/${projectName}-${repoName}/pulls?q=is%3Aclosed+is%3Apr`;
-    }
-    
-    // For other URLs, redirect to the repository
-    return `https://github.com/${githubOrg}/${projectName}-${repoName}`;
-  }
-
-  async function getPRTitle(adoOrg, project, repo, prId) {
-    try {
-      // This would require authentication to ADO API
-      // For now, we'll skip this and just redirect to pulls list
-      return null;
-    } catch (error) {
-      return null;
-    }
   }
 
   function showAutoRedirectCountdown(githubUrl, tabId) {
@@ -180,11 +130,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     let countdown = 3;
     const countdownElement = document.getElementById('countdown');
-    
+
     const timer = setInterval(() => {
       countdown--;
       countdownElement.textContent = countdown;
-      
+
       if (countdown <= 0) {
         clearInterval(timer);
         chrome.tabs.update(tabId, { url: githubUrl });
@@ -192,14 +142,12 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     }, 1000);
 
-    // Redirect now button
     document.getElementById('redirectNow').addEventListener('click', () => {
       clearInterval(timer);
       chrome.tabs.update(tabId, { url: githubUrl });
       window.close();
     });
 
-    // Cancel button
     document.getElementById('cancelRedirect').addEventListener('click', () => {
       clearInterval(timer);
       overlay.remove();

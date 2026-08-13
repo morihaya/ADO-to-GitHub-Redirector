@@ -14,6 +14,7 @@ When organizations migrate from Azure DevOps Repos to GitHub, the old Azure DevO
 - **Visual Notifications**: Shows banner notifications when disabled repositories are detected
 - **One-Click Redirect**: Extension icon click provides immediate redirection for configured organizations
 - **Configurable Organizations**: Set custom Azure DevOps and GitHub organization names
+- **Exclude Keywords**: Strips configurable prefixes (default: `moved_`) from renamed ADO repository names when building the GitHub URL
 
 ## 📋 Prerequisites
 
@@ -40,6 +41,7 @@ When organizations migrate from Azure DevOps Repos to GitHub, the old Azure DevO
 2. Enter your organization details:
    - **Azure DevOps Organization**: Your ADO organization name (e.g., `mycompany`)
    - **GitHub Organization**: Your GitHub organization name (e.g., `mycompany-github`)
+   - **Exclude Keywords**: Comma-separated prefixes stripped from the ADO repository name (default: `moved_`)
 3. Click "Save Settings"
 
 ### Example Configuration
@@ -47,10 +49,16 @@ When organizations migrate from Azure DevOps Repos to GitHub, the old Azure DevO
 ```
 Azure DevOps Organization: contoso
 GitHub Organization: contoso-github
+Exclude Keywords: moved_
 ```
 
 This will redirect URLs like:
 - `https://dev.azure.com/contoso/MyProject/_git/MyRepo` → `https://github.com/contoso-github/MyProject-MyRepo`
+- `https://dev.azure.com/contoso/MyProject/_git/moved_MyRepo` → `https://github.com/contoso-github/MyProject-MyRepo`
+
+### Exclude Keywords
+
+Some organizations rename ADO repositories after migration instead of archiving them (e.g., `MyRepo` becomes `moved_MyRepo`). The exclude keywords setting strips such prefixes from the repository name before building the GitHub URL, so the redirect still lands on the original repository name. Multiple prefixes can be set as a comma-separated list (e.g., `moved_, archived_`). Leave the field empty to disable stripping.
 
 ## 🎯 How It Works
 
@@ -113,6 +121,7 @@ When the extension detects a disabled repository, it shows a blue banner at the 
 ├── popup.js               # Settings management and redirect logic
 ├── content.js             # Page content analysis and notifications
 ├── background.js          # URL monitoring and redirection
+├── shared.js              # Shared URL conversion and settings logic
 ├── icon16.png             # Extension icons (16x16)
 ├── icon32.png             # Extension icons (32x32)
 ├── icon48.png             # Extension icons (48x48)

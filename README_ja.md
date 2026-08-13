@@ -14,6 +14,7 @@
 - **視覚的通知**: 無効化されたリポジトリを検出した際にバナー通知を表示
 - **ワンクリックリダイレクト**: 設定済みの組織では拡張機能アイコンのクリックで即座にリダイレクト
 - **組織名設定可能**: カスタムのAzure DevOpsとGitHub組織名を設定可能
+- **除外キーワード**: リネームされたADOリポジトリ名から設定したプレフィックス（デフォルト: `moved_`）を取り除いてGitHub URLを生成
 
 ## 📋 前提条件
 
@@ -40,6 +41,7 @@
 2. 組織の詳細を入力：
    - **Azure DevOps Organization**: ADO組織名（例：`mycompany`）
    - **GitHub Organization**: GitHub組織名（例：`mycompany-github`）
+   - **Exclude Keywords**: ADOリポジトリ名から取り除くプレフィックス（カンマ区切り、デフォルト: `moved_`）
 3. 「Save Settings」をクリック
 
 ### 設定例
@@ -47,10 +49,16 @@
 ```
 Azure DevOps Organization: contoso
 GitHub Organization: contoso-github
+Exclude Keywords: moved_
 ```
 
 これにより、以下のようなURLがリダイレクトされます：
 - `https://dev.azure.com/contoso/MyProject/_git/MyRepo` → `https://github.com/contoso-github/MyProject-MyRepo`
+- `https://dev.azure.com/contoso/MyProject/_git/moved_MyRepo` → `https://github.com/contoso-github/MyProject-MyRepo`
+
+### 除外キーワード
+
+移行後にADOリポジトリをアーカイブせず、`MyRepo` → `moved_MyRepo` のようにリネームして残す運用が見られます。除外キーワードを設定すると、GitHub URLの生成時にリポジトリ名からそのプレフィックスを取り除くため、リネーム後のURLからでも元のリポジトリ名にリダイレクトできます。カンマ区切りで複数指定可能です（例：`moved_, archived_`）。空欄にすると無効になります。
 
 ## 🎯 動作原理
 
@@ -113,6 +121,7 @@ GitHub Organization: contoso-github
 ├── popup.js               # 設定管理とリダイレクトロジック
 ├── content.js             # ページコンテンツ分析と通知
 ├── background.js          # URL監視とリダイレクト
+├── shared.js              # URL変換・設定の共通ロジック
 ├── icon16.png             # 拡張機能アイコン (16x16)
 ├── icon32.png             # 拡張機能アイコン (32x32)
 ├── icon48.png             # 拡張機能アイコン (48x48)
