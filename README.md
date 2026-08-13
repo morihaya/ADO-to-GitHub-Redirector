@@ -23,6 +23,11 @@ When organizations migrate from Azure DevOps Repos to GitHub, the old Azure DevO
 
 ## 🔧 Installation
 
+### From Chrome Web Store / Edge Add-ons
+
+- [Chrome Web Store](https://chromewebstore.google.com/detail/ado-to-github-redirector/cejhgehboelomfolcnfleokalhpmhlhh)
+- [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/ado-to-github-redirector/mkgaagagpakimpbmkldfekpndgegpfep)
+
 ### Manual Installation (Development)
 
 1. Clone or download this repository to your local machine
